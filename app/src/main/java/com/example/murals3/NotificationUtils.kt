@@ -25,6 +25,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import com.example.murals3.MapsActivity.Companion.ACTION_GEOFENCE_NOTIFY_EVENT
 
 /*
  * We need to create a NotificationChannel associated with our CHANNEL_ID before sending a
@@ -45,13 +46,9 @@ fun createChannel(context: Context) {
     notificationManager.createNotificationChannel(notificationChannel)
 }
 
-/*
- * A Kotlin extension function for AndroidX's NotificationCompat that sends our Geofence
- * entered notification.  It sends a custom notification based on the name string associated
- * with the LANDMARK_DATA from GeofencingConstatns in the GeofenceUtils file.
- */
 fun NotificationManager.sendGeofenceEnteredNotification(context: Context, foundIndex: Int) {
     val contentIntent = Intent(context, MapsActivity::class.java)
+    contentIntent.action = ACTION_GEOFENCE_NOTIFY_EVENT
     contentIntent.putExtra(GeoDataModel.EXTRA_GEOFENCE_INDEX, foundIndex)
     val contentPendingIntent = PendingIntent.getActivity(
         context,

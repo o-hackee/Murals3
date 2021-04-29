@@ -23,6 +23,7 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -47,8 +48,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         private const val REQUEST_LOCATION_PERMISSION = 52
         private const val REQUEST_TURN_DEVICE_LOCATION_ON = 43
         private const val TAG = "MapsActivity"
-        internal const val ACTION_GEOFENCE_EVENT =
-                "HuntMainActivity.treasureHunt.action.ACTION_GEOFENCE_EVENT"
+        internal const val ACTION_GEOFENCE_EVENT = "MapsActivity.action.ACTION_GEOFENCE_EVENT"
+        internal const val ACTION_GEOFENCE_PASSED_EVENT = "MapsActivity.action.ACTION_GEOFENCE_PASSED"
+        internal const val ACTION_GEOFENCE_NOTIFY_EVENT = "MapsActivity.action.ACTION_GEOFENCE_NOTIFY"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,6 +69,16 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         // Create channel for notifications
         createChannel(this)
+
+        viewModel.visitedLiveData.observe(this) {
+            Log.d(TAG, "observe() $it")
+            if (it.isEmpty()) return@observe
+            val last = it.last()
+            geofencingClient.removeGeofences(listOf(MuralPois.data[last].title))
+            // дорого, но что поделать
+            map.clear()
+            addMarkers()
+        }
     }
 
     override fun onStart() {
@@ -75,6 +87,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         if (this::map.isInitialized) {
             enableMyLocation()
         }
+    }
+
+    override fun onDestroy() {
+        geofencingClient.removeGeofences(geofencePendingIntent)
+        super.onDestroy()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -90,11 +107,27 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        Log.d(TAG, "onNewIntent() action: ${intent?.action}")
+        if (intent == null) return
+        if (intent.action != ACTION_GEOFENCE_PASSED_EVENT && intent.action != ACTION_GEOFENCE_NOTIFY_EVENT) return
+        val extras = intent.extras
+        if (extras != null && extras.containsKey(GeoDataModel.EXTRA_GEOFENCE_INDEX)) {
+            val index = extras.getInt(GeoDataModel.EXTRA_GEOFENCE_INDEX)
+            Log.d(TAG, "index: $index")
+            if (intent.action == ACTION_GEOFENCE_PASSED_EVENT) {
+                viewModel.markAsVisited(index)
+            } else {
+                map.moveCamera(CameraUpdateFactory.newLatLng(MuralPois.data[index].latLng))
+            }
+        }
+    }
+
     /**
      * Manipulates the map once available.
      * This callback is triggered when the map is ready to be used.
-     * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
+     * This is where we can add markers or lines, add listeners or move the camera.
      * If Google Play services is not installed on the device, the user will be prompted to install
      * it inside the SupportMapFragment. This method will only be triggered once the user has
      * installed Google Play services and returned to the app.
@@ -106,14 +139,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         map.uiSettings.isZoomControlsEnabled = true
         enableMyLocation()
 
-        MuralPois.data.forEach {
-            val marker = map.addMarker(MarkerOptions().position(it.latLng).title(it.title))
-            marker.tag = it.link
-        }
+        addMarkers()
         val zoomLevel = 17f
         map.moveCamera(CameraUpdateFactory.newLatLngZoom(MuralPois.data.first().latLng, zoomLevel))
         map.setOnInfoWindowClickListener{
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it.tag.toString())))
+        }
+    }
+
+    private fun addMarkers() {
+        MuralPois.data.forEachIndexed { index, value ->
+            val markerOptions = MarkerOptions().position(value.latLng).title(value.title)
+            if (viewModel.isVisited(index)) {
+                markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
+            }
+            val marker = map.addMarker(markerOptions)
+            marker.tag = value.link
         }
     }
 
@@ -143,7 +184,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             Log.d(TAG, "OnCompleteListener() locationSettingsResponse.isSuccessful: ${locationSettingsResponse.isSuccessful}")
             if (locationSettingsResponse.isSuccessful) {
                 map.isMyLocationEnabled = true
-                startGeofenceForNotFound()
+                Log.d(TAG, "start geofence!")
+                viewModel.addAllGeofences(geofencingClient, geofencePendingIntent)
             }
         }
         locationSettingsResponseTask.addOnFailureListener { exception ->
@@ -166,10 +208,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                         .show()
             }
         }
-    }
-
-    private fun startGeofenceForNotFound() {
-        Log.d(TAG, "start geofence!")
     }
 
     override fun onRequestPermissionsResult(

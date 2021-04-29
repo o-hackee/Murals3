@@ -12,4 +12,6 @@
     <string name="notification_channel_description">Geofence status notification</string>
     <string name="content_text">You\'re around %1$s</string>
     <string name="location_required_error">Location services must be enabled for this app.</string>
+    <string name="geofences_not_added">Problem in adding geofences.</string>
+    <string name="geofences_added">Geofence added.</string>
 </resources>
