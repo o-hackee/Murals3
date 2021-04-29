@@ -20,13 +20,13 @@ import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import androidx.core.content.ContextCompat
 import com.example.murals3.MapsActivity.Companion.ACTION_GEOFENCE_EVENT
 import com.example.murals3.MapsActivity.Companion.ACTION_GEOFENCE_PASSED_EVENT
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofenceStatusCodes
 import com.google.android.gms.location.GeofencingEvent
+import timber.log.Timber
 
 
 fun errorMessage(context: Context, errorCode: Int): String {
@@ -53,22 +53,22 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
         val geofencingEvent = GeofencingEvent.fromIntent(intent)
         if (geofencingEvent.hasError()) {
-            Log.e(TAG, errorMessage(context, geofencingEvent.errorCode))
+            Timber.e(errorMessage(context, geofencingEvent.errorCode))
             return
         }
         if (geofencingEvent.geofenceTransition != Geofence.GEOFENCE_TRANSITION_ENTER)
             return
 
-        Log.v(TAG, context.getString(R.string.geofence_entered))
+        Timber.v(context.getString(R.string.geofence_entered))
         if (geofencingEvent.triggeringGeofences.isEmpty()) {
-            Log.e(TAG, "No Geofence Trigger Found! Abort mission!")
+            Timber.e("No Geofence Trigger Found! Abort mission!")
             return
         }
 
         val geofenceRequestId = geofencingEvent.triggeringGeofences.first().requestId
-        val dataIdx = MuralPois.data.indexOfFirst{ it.title == geofenceRequestId }
-        if ( -1 == dataIdx) {
-            Log.e(TAG, "Unknown Geofence: Data not found")
+        val dataIdx = MuralPois.data.indexOfFirst { it.title == geofenceRequestId }
+        if (-1 == dataIdx) {
+            Timber.e("Unknown Geofence: Data not found")
             return
         }
 
@@ -83,4 +83,3 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
     }
 }
 
-private const val TAG = "GeofenceBroadcastReceiver"

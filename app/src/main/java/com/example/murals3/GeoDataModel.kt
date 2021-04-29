@@ -1,16 +1,13 @@
 package com.example.murals3
 
 import android.app.PendingIntent
-import android.content.Context
-import android.content.Intent
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.SavedStateHandle
-import androidx.lifecycle.Transformations
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
+import timber.log.Timber
 
 class GeoDataModel(state: SavedStateHandle) : ViewModel() {
 
@@ -18,8 +15,6 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
         const val EXTRA_GEOFENCE_INDEX = "GEOFENCE_INDEX"
         const val VISITED_KEY = "visited"
         const val IS_EVERYTHIG_ADDED_KEY = "isEverythingAdded"
-
-        const val TAG = "GeoDataModel"
     }
 
     private val _visitedLiveData = state.getLiveData(VISITED_KEY, listOf<Int>())
@@ -56,10 +51,10 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
             // TODO no result handling for now
             geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent).run {
                 addOnSuccessListener {
-                    Log.i(TAG, "successfully added ${geofence.requestId}")
+                    Timber.i( "successfully added ${geofence.requestId}")
                 }
                 addOnFailureListener { exception ->
-                    Log.e(TAG, exception.message.toString())
+                    Timber.e(exception.message.toString())
                 }
             }
         }

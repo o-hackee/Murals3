@@ -9,7 +9,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -29,6 +28,7 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.material.snackbar.Snackbar
+import timber.log.Timber
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -38,7 +38,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var map: GoogleMap
 
     // A PendingIntent for the Broadcast Receiver that handles geofence transitions.
-    val geofencePendingIntent: PendingIntent by lazy {
+    private val geofencePendingIntent: PendingIntent by lazy {
         val intent = Intent(this, GeofenceBroadcastReceiver::class.java)
         intent.action = ACTION_GEOFENCE_EVENT
         PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
@@ -47,7 +47,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     companion object {
         private const val REQUEST_LOCATION_PERMISSION = 52
         private const val REQUEST_TURN_DEVICE_LOCATION_ON = 43
-        private const val TAG = "MapsActivity"
         internal const val ACTION_GEOFENCE_EVENT = "MapsActivity.action.ACTION_GEOFENCE_EVENT"
         internal const val ACTION_GEOFENCE_PASSED_EVENT = "MapsActivity.action.ACTION_GEOFENCE_PASSED"
         internal const val ACTION_GEOFENCE_NOTIFY_EVENT = "MapsActivity.action.ACTION_GEOFENCE_NOTIFY"
@@ -71,7 +70,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         createChannel(this)
 
         viewModel.visitedLiveData.observe(this) {
-            Log.d(TAG, "observe() $it")
+            Timber.d("observe() $it")
             if (it.isEmpty()) return@observe
             val last = it.last()
             geofencingClient.removeGeofences(listOf(MuralPois.data[last].title))
@@ -83,7 +82,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onStart() {
         super.onStart()
-        Log.d(TAG, "onStart()")
+        Timber.d("onStart()")
         if (this::map.isInitialized) {
             enableMyLocation()
         }
@@ -96,7 +95,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        Log.d(TAG, "onActivityResult() resultCode: $resultCode")
+        Timber.d("onActivityResult() resultCode: $resultCode")
         if (requestCode == REQUEST_TURN_DEVICE_LOCATION_ON) {
             // RESULT_OK -1 (OK), RESULT_CANCELED 0 (NO THANKS)
             // sometimes after clicking OK, this second check is executed too early,
@@ -109,13 +108,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        Log.d(TAG, "onNewIntent() action: ${intent?.action}")
+        Timber.d("onNewIntent() action: ${intent?.action}")
         if (intent == null) return
         if (intent.action != ACTION_GEOFENCE_PASSED_EVENT && intent.action != ACTION_GEOFENCE_NOTIFY_EVENT) return
         val extras = intent.extras
         if (extras != null && extras.containsKey(GeoDataModel.EXTRA_GEOFENCE_INDEX)) {
             val index = extras.getInt(GeoDataModel.EXTRA_GEOFENCE_INDEX)
-            Log.d(TAG, "index: $index")
+            Timber.d("index: $index")
             if (intent.action == ACTION_GEOFENCE_PASSED_EVENT) {
                 viewModel.markAsVisited(index)
             } else {
@@ -133,7 +132,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
      * installed Google Play services and returned to the app.
      */
     override fun onMapReady(googleMap: GoogleMap) {
-        Log.d(TAG, "onMapReady()")
+        Timber.d("onMapReady()")
         map = googleMap
 
         map.uiSettings.isZoomControlsEnabled = true
@@ -143,7 +142,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         val zoomLevel = 17f
         map.moveCamera(CameraUpdateFactory.newLatLngZoom(MuralPois.data.first().latLng, zoomLevel))
         map.setOnInfoWindowClickListener{
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it.tag.toString())))
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it.tag?.toString())))
         }
     }
 
@@ -151,10 +150,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         MuralPois.data.forEachIndexed { index, value ->
             val markerOptions = MarkerOptions().position(value.latLng).title(value.title)
             if (viewModel.isVisited(index)) {
-                markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
+                markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW))
             }
             val marker = map.addMarker(markerOptions)
-            marker.tag = value.link
+            marker?.tag = value.link
         }
     }
 
@@ -173,7 +172,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun checkDeviceLocationSettingsAndStartGeofence(resolve: Boolean = true) {
-        Log.d(TAG,"checking location turned on/off")
+        Timber.d("checking location turned on/off")
         val locationRequest = LocationRequest.create()
         locationRequest.priority = LocationRequest.PRIORITY_LOW_POWER
         val locationSettingsRequest = LocationSettingsRequest.Builder()
@@ -181,28 +180,28 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         val settingsClient = LocationServices.getSettingsClient(this)
         val locationSettingsResponseTask = settingsClient.checkLocationSettings(locationSettingsRequest)
         locationSettingsResponseTask.addOnCompleteListener { locationSettingsResponse ->
-            Log.d(TAG, "OnCompleteListener() locationSettingsResponse.isSuccessful: ${locationSettingsResponse.isSuccessful}")
+            Timber.d("OnCompleteListener() locationSettingsResponse.isSuccessful: ${locationSettingsResponse.isSuccessful}")
             if (locationSettingsResponse.isSuccessful) {
                 map.isMyLocationEnabled = true
-                Log.d(TAG, "start geofence!")
+                Timber.d("start geofence!")
                 viewModel.addAllGeofences(geofencingClient, geofencePendingIntent)
             }
         }
         locationSettingsResponseTask.addOnFailureListener { exception ->
-            Log.d(TAG, "OnFailureListener() exception is ResolvableApiException: ${exception is ResolvableApiException} resolve: $resolve")
+            Timber.d("OnFailureListener() exception is ResolvableApiException: ${exception is ResolvableApiException} resolve: $resolve")
             if (exception is ResolvableApiException && resolve) {
                 try {
-                    Log.d(TAG, "calling exception.startResolutionForResult()")
+                    Timber.d("calling exception.startResolutionForResult()")
                     exception.startResolutionForResult(this, REQUEST_TURN_DEVICE_LOCATION_ON)
                 } catch (sendEx: IntentSender.SendIntentException) {
-                    Log.e(TAG, "Error getting location settings resolution: ${sendEx.message}")
+                    Timber.e("Error getting location settings resolution: ${sendEx.message}")
                 }
             } else {
-                Log.d(TAG, "showing snackbar")
+                Timber.d("showing snackbar")
                 Snackbar.make(binding.activityMapsMain,
                         R.string.location_required_error, Snackbar.LENGTH_INDEFINITE)
                         .setAction(android.R.string.ok) {
-                            Log.d(TAG, "calling checkDeviceLocationSettingsAndStartGeofence()")
+                            Timber.d("calling checkDeviceLocationSettingsAndStartGeofence()")
                             checkDeviceLocationSettingsAndStartGeofence()
                         }
                         .show()
