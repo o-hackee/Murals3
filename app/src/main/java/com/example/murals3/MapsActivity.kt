@@ -30,6 +30,10 @@ import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.material.snackbar.Snackbar
 import timber.log.Timber
 
+// TODO icon
+// какой-то geofence-статус?
+// TODO потестить перезапуски, background и.т.д.
+
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var binding: ActivityMapsBinding
@@ -74,6 +78,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             if (it.isEmpty()) return@observe
             val last = it.last()
             geofencingClient.removeGeofences(listOf(MuralPois.data[last].title))
+            Timber.i("remove geofence ${MuralPois.data[last].title}")
             // дорого, но что поделать
             map.clear()
             addMarkers()
@@ -90,6 +95,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onDestroy() {
         geofencingClient.removeGeofences(geofencePendingIntent)
+        Timber.i("remove all geofences")
         super.onDestroy()
     }
 
