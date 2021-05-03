@@ -77,8 +77,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             Timber.d("observe() $it")
             if (it.isEmpty()) return@observe
             val last = it.last()
-            geofencingClient.removeGeofences(listOf(MuralPois.data[last].title))
-            Timber.i("remove geofence ${MuralPois.data[last].title}")
+            geofencingClient.removeGeofences(listOf(MuralPois.data[last.idx].title))
+            Timber.i("remove geofence ${MuralPois.data[last.idx].title}")
             // дорого, но что поделать
             map.clear()
             addMarkers()

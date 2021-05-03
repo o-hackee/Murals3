@@ -17,10 +17,22 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
         const val IS_EVERYTHIG_ADDED_KEY = "isEverythingAdded"
     }
 
-    private val _visitedLiveData = state.getLiveData(VISITED_KEY, listOf<Int>())
+    enum class PoiStatus {
+        NotActivated,
+        Activated,
+        Visited
+    }
+
+    data class PoiState(
+            val idx: Int,
+            val activationTimestamp: Long,
+            val status: PoiStatus
+    )
+
+    private val _visitedLiveData = state.getLiveData(VISITED_KEY, listOf<PoiState>())
     private val visited
         get() = _visitedLiveData.value ?: listOf()
-    val visitedLiveData: LiveData<List<Int>>
+    val visitedLiveData: LiveData<List<PoiState>>
         get() = _visitedLiveData
     private val _geofencesAdded = state.getLiveData(IS_EVERYTHIG_ADDED_KEY, false)
     private val geofenceAdded
@@ -28,10 +40,10 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
 
 
     fun isVisited(index: Int): Boolean {
-        return visited.contains(index)
+        return visited.any { it.idx == index }
     }
     fun markAsVisited(index: Int) {
-        _visitedLiveData.value = _visitedLiveData.value?.plus(index)
+        _visitedLiveData.value = _visitedLiveData.value?.plus(PoiState(index, -1, PoiStatus.Visited)) // TODO do not add, just change status
     }
 
     fun addAllGeofences(geofencingClient: GeofencingClient, geofencePendingIntent: PendingIntent) {
