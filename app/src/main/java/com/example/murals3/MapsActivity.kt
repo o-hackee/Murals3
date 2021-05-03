@@ -56,6 +56,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         internal const val ACTION_GEOFENCE_NOTIFY_EVENT = "MapsActivity.action.ACTION_GEOFENCE_NOTIFY"
     }
 
+    // TODO добавить проверку expired
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_maps)
@@ -73,12 +75,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         // Create channel for notifications
         createChannel(this)
 
-        viewModel.visitedLiveData.observe(this) {
+        viewModel.poiLiveData.observe(this) {
             Timber.d("observe() $it")
-            if (it.isEmpty()) return@observe
-            val last = it.last()
-            geofencingClient.removeGeofences(listOf(MuralPois.data[last.idx].title))
-            Timber.i("remove geofence ${MuralPois.data[last.idx].title}")
+            Timber.d("lastUpdated: ${viewModel.lastUpdated}")
+            if (viewModel.lastUpdated < 0) return@observe
+            if (viewModel.lastUpdated >= MuralPois.data.size) {
+                Timber.e("Unacceptable last updated index!")
+                return@observe
+            }
+            val status = viewModel.getStatus(viewModel.lastUpdated)
+            if (status == GeoDataModel.PoiStatus.Activated) {
+                return@observe
+            }
+            if (status == GeoDataModel.PoiStatus.Visited) {
+                geofencingClient.removeGeofences(listOf(MuralPois.data[viewModel.lastUpdated].title))
+                Timber.i("remove geofence ${MuralPois.data[viewModel.lastUpdated].title}")
+            }
             // дорого, но что поделать
             map.clear()
             addMarkers()
@@ -122,7 +134,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             val index = extras.getInt(GeoDataModel.EXTRA_GEOFENCE_INDEX)
             Timber.d("index: $index")
             if (intent.action == ACTION_GEOFENCE_PASSED_EVENT) {
-                viewModel.markAsVisited(index)
+                viewModel.updateStatus(index, GeoDataModel.PoiStatus.Visited)
             } else {
                 map.moveCamera(CameraUpdateFactory.newLatLng(MuralPois.data[index].latLng))
             }
@@ -155,8 +167,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     private fun addMarkers() {
         MuralPois.data.forEachIndexed { index, value ->
             val markerOptions = MarkerOptions().position(value.latLng).title(value.title)
-            if (viewModel.isVisited(index)) {
+            val status = viewModel.getStatus(index)
+            if (status == GeoDataModel.PoiStatus.Visited) {
                 markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW))
+            } else if (status == GeoDataModel.PoiStatus.NotActivated) {
+                markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
             }
             val marker = map.addMarker(markerOptions)
             marker?.tag = value.link
@@ -189,7 +204,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             Timber.d("OnCompleteListener() locationSettingsResponse.isSuccessful: ${locationSettingsResponse.isSuccessful}")
             if (locationSettingsResponse.isSuccessful) {
                 map.isMyLocationEnabled = true
-                Timber.d("start geofence!")
                 viewModel.addAllGeofences(geofencingClient, geofencePendingIntent)
             }
         }
