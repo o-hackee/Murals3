@@ -7,6 +7,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
+import com.google.android.gms.maps.model.LatLng
 import timber.log.Timber
 
 class GeoDataModel(state: SavedStateHandle) : ViewModel() {
@@ -48,13 +49,13 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
         val value = _poiLiveData.value
         if (value != null) {
             lastUpdated = index
+            Timber.d("lastUpdated: $lastUpdated")
             val updated = value.toMutableList()
             updated[index].status = newStatus
             _poiLiveData.value = updated
         }
     }
     fun resetLastUpdated(): Triple<Boolean, PoiStatus, Int> {
-        Timber.d("lastUpdated: $lastUpdated")
         if (lastUpdated < 0) return Triple(false, PoiStatus.NotActivated, -1)
         if (lastUpdated >= MuralPois.data.size) {
             Timber.e("Unacceptable last updated index detected: $lastUpdated")
@@ -66,11 +67,41 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
         return Triple(true, pois[index].status, index)
     }
 
+    // TODO delete this, debug only
+    private fun add100(geofencingClient: GeofencingClient, geofencePendingIntent: PendingIntent) {
+        val point = LatLng(48.1977, 16.3671)
+        (1..100).forEach {
+            val geofence = Geofence.Builder()
+                    .setRequestId(it.toString())
+                    .setCircularRegion(point.latitude, point.longitude, MuralPois.GEOFENCE_RADIUS_IN_METERS)
+                    .setExpirationDuration(MuralPois.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
+                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
+                    .build()
+            val geofencingRequest = GeofencingRequest.Builder()
+                    .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+                    .addGeofence(geofence)
+                    .build()
+            // A PendingIntent for the Broadcast Receiver that handles geofence transitions.
+            geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent).addOnCompleteListener {
+                Timber.i("pseudo $it added")
+            }
+        }
+    }
+    private fun remove100(geofencingClient: GeofencingClient, geofencePendingIntent: PendingIntent) {
+        geofencingClient.removeGeofences(geofencePendingIntent)
+    }
+
     fun addAllGeofences(geofencingClient: GeofencingClient, geofencePendingIntent: PendingIntent) {
+
+        add100(geofencingClient, geofencePendingIntent)
+
         val geofenceIsActive = pois.any { it.status == PoiStatus.Activated }
         Timber.d("geofenceIsActive: $geofenceIsActive")
         if (geofenceIsActive) return
         pois.forEachIndexed { idx, state ->
+            if (idx == 1) {
+                remove100(geofencingClient, geofencePendingIntent)
+            }
             val poiData = MuralPois.data[idx]
             val geofence = Geofence.Builder()
                     .setRequestId(idx.toString())
@@ -89,7 +120,7 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
                     Timber.i( "successfully added ${poiData.title}")
                 }
                 addOnFailureListener { exception ->
-                    Timber.e(exception.message.toString())
+                    Timber.e("failed to add ${poiData.title}: ${exception.message}")
                     setLastUpdated(idx, PoiStatus.NotActivated)
                 }
             }

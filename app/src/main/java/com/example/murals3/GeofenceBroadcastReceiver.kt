@@ -37,6 +37,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
         val geofencingEvent = GeofencingEvent.fromIntent(intent)
         if (geofencingEvent.hasError()) {
+            // alternatively use GeofenceStatusCodes.getStatusCodeString()
             Timber.e(errorMessage(context, geofencingEvent.errorCode))
             return
         }

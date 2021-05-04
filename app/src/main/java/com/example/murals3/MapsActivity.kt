@@ -159,6 +159,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun addMarkers() {
+        Timber.i("adding markers...")
         MuralPois.data.forEachIndexed { index, value ->
             val markerOptions = MarkerOptions().position(value.latLng).title(value.title)
             val status = viewModel.getStatus(index)
