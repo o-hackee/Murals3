@@ -9,7 +9,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 // TODO без чистки
-class FileLoggingTree(val applicationContext: Context) : DebugTree() {
+class FileLoggingTree(private val applicationContext: Context) : DebugTree() {
     override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
         super.log(priority, tag, message, t)
         try {

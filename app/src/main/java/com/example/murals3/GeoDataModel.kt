@@ -1,8 +1,12 @@
 package com.example.murals3
 
+import android.app.Application
+import android.app.NotificationManager
 import android.app.PendingIntent
+import android.os.Handler
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
@@ -10,7 +14,7 @@ import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.maps.model.LatLng
 import timber.log.Timber
 
-class GeoDataModel(state: SavedStateHandle) : ViewModel() {
+class GeoDataModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
 
     companion object {
         const val EXTRA_GEOFENCE_INDEX = "GEOFENCE_INDEX"
@@ -28,7 +32,7 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
             var status: PoiStatus
     )
 
-    private val _poiLiveData = state.getLiveData(POIS_KEY, MuralPois.data.map {
+    private val _poiLiveData = savedStateHandle.getLiveData(POIS_KEY, MuralPois.data.map {
         PoiState(-1, PoiStatus.NotActivated)
     })
     private val pois
@@ -53,6 +57,14 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
             val updated = value.toMutableList()
             updated[index].status = newStatus
             _poiLiveData.value = updated
+
+            if ((newStatus == PoiStatus.Visited || newStatus == PoiStatus.NotActivated) && !geofenceIsActive()) {
+                // send a notification to allow the user to decide whether to restart
+                Handler().postDelayed({
+                    val notificationManager = ContextCompat.getSystemService(getApplication(), NotificationManager::class.java)
+                    notificationManager?.sendCompleteNotification(getApplication())
+                }, 5000)
+            }
         }
     }
     fun resetLastUpdated(): Triple<Boolean, PoiStatus, Int> {
@@ -65,6 +77,18 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
         val index = lastUpdated
         lastUpdated = -1
         return Triple(true, pois[index].status, index)
+    }
+
+    private fun geofenceIsActive() =
+        pois.any { it.status == PoiStatus.Activated }
+
+    fun restart() {
+        val v = _poiLiveData.value
+        if (v != null) {
+            val u = v.toMutableList()
+            u.forEach { it.status = PoiStatus.NotActivated }
+            _poiLiveData.value = u
+        }
     }
 
     // TODO delete this, debug only
@@ -95,10 +119,14 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
 
         add100(geofencingClient, geofencePendingIntent)
 
-        val geofenceIsActive = pois.any { it.status == PoiStatus.Activated }
+        val geofenceIsActive = geofenceIsActive()
         Timber.d("geofenceIsActive: $geofenceIsActive")
         if (geofenceIsActive) return
-        pois.forEachIndexed { idx, state ->
+
+        val notificationManager = ContextCompat.getSystemService(getApplication(), NotificationManager::class.java)
+        notificationManager?.cancelAll()
+
+        pois.take(3).forEachIndexed { idx, state ->
             if (idx == 1) {
                 remove100(geofencingClient, geofencePendingIntent)
             }
@@ -106,7 +134,7 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
             val geofence = Geofence.Builder()
                     .setRequestId(idx.toString())
                     .setCircularRegion(poiData.latLng.latitude, poiData.latLng.longitude, MuralPois.GEOFENCE_RADIUS_IN_METERS)
-                    .setExpirationDuration(MuralPois.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
+                    .setExpirationDuration(/*60000*/MuralPois.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
                     .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
                     .build()
             val geofencingRequest = GeofencingRequest.Builder()

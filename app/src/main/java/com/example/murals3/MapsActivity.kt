@@ -2,6 +2,7 @@ package com.example.murals3
 
 import android.Manifest
 import android.annotation.TargetApi
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.IntentSender
@@ -34,7 +35,7 @@ import timber.log.Timber
 // какой-то geofence-статус?
 // TODO потестить перезапуски, background и.т.д.
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDialog.ConfirmationListener {
 
     private lateinit var binding: ActivityMapsBinding
     private lateinit var geofencingClient: GeofencingClient
@@ -54,6 +55,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         internal const val ACTION_GEOFENCE_EVENT = "MapsActivity.action.ACTION_GEOFENCE_EVENT"
         internal const val ACTION_GEOFENCE_PASSED_EVENT = "MapsActivity.action.ACTION_GEOFENCE_PASSED"
         internal const val ACTION_GEOFENCE_NOTIFY_EVENT = "MapsActivity.action.ACTION_GEOFENCE_NOTIFY"
+        internal const val ACTION_COMPLETE_EVENT = "MapsActivity.action.ACTION_COMPLETE_EVENT"
     }
 
     // TODO добавить проверку expired
@@ -78,6 +80,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         viewModel.poiLiveData.observe(this) {
             Timber.d("observe() $it")
             val (got, status, index) = viewModel.resetLastUpdated()
+            Timber.d("$got $status $index")
             if (!got || status == GeoDataModel.PoiStatus.Activated) {
                 return@observe
             }
@@ -122,17 +125,34 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         super.onNewIntent(intent)
         Timber.d("onNewIntent() action: ${intent?.action}")
         if (intent == null) return
-        if (intent.action != ACTION_GEOFENCE_PASSED_EVENT && intent.action != ACTION_GEOFENCE_NOTIFY_EVENT) return
-        val extras = intent.extras
-        if (extras != null && extras.containsKey(GeoDataModel.EXTRA_GEOFENCE_INDEX)) {
-            val index = extras.getInt(GeoDataModel.EXTRA_GEOFENCE_INDEX)
-            Timber.d("index: $index")
-            if (intent.action == ACTION_GEOFENCE_PASSED_EVENT) {
-                viewModel.setLastUpdated(index, GeoDataModel.PoiStatus.Visited)
-            } else {
-                map.moveCamera(CameraUpdateFactory.newLatLng(MuralPois.data[index].latLng))
+        when (intent.action) {
+            ACTION_GEOFENCE_PASSED_EVENT, ACTION_GEOFENCE_NOTIFY_EVENT -> {
+                val extras = intent.extras
+                if (extras != null && extras.containsKey(GeoDataModel.EXTRA_GEOFENCE_INDEX)) {
+                    val index = extras.getInt(GeoDataModel.EXTRA_GEOFENCE_INDEX)
+                    Timber.d("index: $index")
+                    if (intent.action == ACTION_GEOFENCE_PASSED_EVENT) {
+                        viewModel.setLastUpdated(index, GeoDataModel.PoiStatus.Visited)
+                    } else {
+                        map.moveCamera(CameraUpdateFactory.newLatLng(MuralPois.data[index].latLng))
+                    }
+                }
+            }
+            ACTION_COMPLETE_EVENT -> {
+                RestartRequestDialog().show(supportFragmentManager, "RestartRequestDialogTag")
             }
         }
+    }
+
+
+    override fun confirmButtonClicked() {
+        val notificationManager = ContextCompat.getSystemService(applicationContext, NotificationManager::class.java)
+        notificationManager?.cancelAll()
+        viewModel.restart()
+        checkDeviceLocationSettingsAndStartGeofence()
+    }
+
+    override fun cancelButtonClicked() {
     }
 
     /**
