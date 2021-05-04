@@ -34,8 +34,7 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
         get() = _poiLiveData.value ?: listOf()
     val poiLiveData: LiveData<List<PoiState>>
         get() = _poiLiveData
-    var lastUpdated = -1
-        private set
+    private var lastUpdated = -1
 
 
     fun getStatus(index: Int): PoiStatus {
@@ -45,7 +44,7 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
         }
         return pois[index].status
     }
-    fun updateStatus(index: Int, newStatus: PoiStatus) {
+    fun setLastUpdated(index: Int, newStatus: PoiStatus) {
         val value = _poiLiveData.value
         if (value != null) {
             lastUpdated = index
@@ -53,6 +52,18 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
             updated[index].status = newStatus
             _poiLiveData.value = updated
         }
+    }
+    fun resetLastUpdated(): Triple<Boolean, PoiStatus, Int> {
+        Timber.d("lastUpdated: $lastUpdated")
+        if (lastUpdated < 0) return Triple(false, PoiStatus.NotActivated, -1)
+        if (lastUpdated >= MuralPois.data.size) {
+            Timber.e("Unacceptable last updated index detected: $lastUpdated")
+            lastUpdated = -1
+            return Triple(false, PoiStatus.NotActivated, -1)
+        }
+        val index = lastUpdated
+        lastUpdated = -1
+        return Triple(true, pois[index].status, index)
     }
 
     fun addAllGeofences(geofencingClient: GeofencingClient, geofencePendingIntent: PendingIntent) {
@@ -62,7 +73,7 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
         pois.forEachIndexed { idx, state ->
             val poiData = MuralPois.data[idx]
             val geofence = Geofence.Builder()
-                    .setRequestId(poiData.title)
+                    .setRequestId(idx.toString())
                     .setCircularRegion(poiData.latLng.latitude, poiData.latLng.longitude, MuralPois.GEOFENCE_RADIUS_IN_METERS)
                     .setExpirationDuration(MuralPois.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
                     .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
@@ -75,11 +86,11 @@ class GeoDataModel(state: SavedStateHandle) : ViewModel() {
             // A PendingIntent for the Broadcast Receiver that handles geofence transitions.
             geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent).run {
                 addOnSuccessListener {
-                    Timber.i( "successfully added ${geofence.requestId}")
+                    Timber.i( "successfully added ${poiData.title}")
                 }
                 addOnFailureListener { exception ->
                     Timber.e(exception.message.toString())
-                    updateStatus(idx, PoiStatus.NotActivated)
+                    setLastUpdated(idx, PoiStatus.NotActivated)
                 }
             }
         }

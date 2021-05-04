@@ -77,19 +77,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         viewModel.poiLiveData.observe(this) {
             Timber.d("observe() $it")
-            Timber.d("lastUpdated: ${viewModel.lastUpdated}")
-            if (viewModel.lastUpdated < 0) return@observe
-            if (viewModel.lastUpdated >= MuralPois.data.size) {
-                Timber.e("Unacceptable last updated index!")
-                return@observe
-            }
-            val status = viewModel.getStatus(viewModel.lastUpdated)
-            if (status == GeoDataModel.PoiStatus.Activated) {
+            val (got, status, index) = viewModel.resetLastUpdated()
+            if (!got || status == GeoDataModel.PoiStatus.Activated) {
                 return@observe
             }
             if (status == GeoDataModel.PoiStatus.Visited) {
-                geofencingClient.removeGeofences(listOf(MuralPois.data[viewModel.lastUpdated].title))
-                Timber.i("remove geofence ${MuralPois.data[viewModel.lastUpdated].title}")
+                geofencingClient.removeGeofences(listOf(MuralPois.data[index].title))
+                Timber.i("remove geofence ${MuralPois.data[index].title}")
             }
             // дорого, но что поделать
             map.clear()
@@ -134,7 +128,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             val index = extras.getInt(GeoDataModel.EXTRA_GEOFENCE_INDEX)
             Timber.d("index: $index")
             if (intent.action == ACTION_GEOFENCE_PASSED_EVENT) {
-                viewModel.updateStatus(index, GeoDataModel.PoiStatus.Visited)
+                viewModel.setLastUpdated(index, GeoDataModel.PoiStatus.Visited)
             } else {
                 map.moveCamera(CameraUpdateFactory.newLatLng(MuralPois.data[index].latLng))
             }
