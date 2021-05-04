@@ -6,7 +6,8 @@ import java.util.concurrent.TimeUnit
 data class MuralPoi(val latLng: LatLng, val link: String, val title: String)
 
 object MuralPois {
-    val GEOFENCE_EXPIRATION_IN_MILLISECONDS: Long = TimeUnit.HOURS.toMillis(2)
+    val GEOFENCE_EXPIRATION_IN_MILLISECONDS: Long = // 60000
+        TimeUnit.HOURS.toMillis(2)
     const val GEOFENCE_RADIUS_IN_METERS = 20f
 
     val data: List<MuralPoi> by lazy {

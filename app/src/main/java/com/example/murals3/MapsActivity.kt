@@ -35,7 +35,7 @@ import timber.log.Timber
 // какой-то geofence-статус?
 // TODO потестить перезапуски, background и.т.д.
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDialog.ConfirmationListener {
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDialog.RestartRequestDialogListener {
 
     private lateinit var binding: ActivityMapsBinding
     private lateinit var geofencingClient: GeofencingClient
@@ -81,7 +81,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
             Timber.d("observe() $it")
             val (got, status, index) = viewModel.resetLastUpdated()
             Timber.d("$got $status $index")
-            if (!got || status == GeoDataModel.PoiStatus.Activated) {
+            if (!got) {
                 return@observe
             }
             if (status == GeoDataModel.PoiStatus.Visited) {
@@ -132,7 +132,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
                     val index = extras.getInt(GeoDataModel.EXTRA_GEOFENCE_INDEX)
                     Timber.d("index: $index")
                     if (intent.action == ACTION_GEOFENCE_PASSED_EVENT) {
-                        viewModel.setLastUpdated(index, GeoDataModel.PoiStatus.Visited)
+                        viewModel.setLastUpdated(index, GeoDataModel.PoiStatus.Visited, true)
                     } else {
                         map.moveCamera(CameraUpdateFactory.newLatLng(MuralPois.data[index].latLng))
                     }
@@ -143,7 +143,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
             }
         }
     }
-
 
     override fun confirmButtonClicked() {
         val notificationManager = ContextCompat.getSystemService(applicationContext, NotificationManager::class.java)
@@ -219,7 +218,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
             Timber.d("OnCompleteListener() locationSettingsResponse.isSuccessful: ${locationSettingsResponse.isSuccessful}")
             if (locationSettingsResponse.isSuccessful) {
                 map.isMyLocationEnabled = true
-                viewModel.addAllGeofences(geofencingClient, geofencePendingIntent)
+                val expiredDetected = viewModel.checkExpired()
+
+                val geofenceIsActive = viewModel.geofenceIsActive()
+                Timber.d("geofenceIsActive: $geofenceIsActive")
+                if (!geofenceIsActive) {
+                    if (expiredDetected) {
+                        RestartRequestDialog(true).show(supportFragmentManager, "ExpiredDialogTag")
+                    } else {
+                        viewModel.addAllGeofences(geofencingClient, geofencePendingIntent)
+                    }
+                }
             }
         }
         locationSettingsResponseTask.addOnFailureListener { exception ->

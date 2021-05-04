@@ -6,30 +6,30 @@ import android.content.Context
 import android.os.Bundle
 import androidx.fragment.app.DialogFragment
 
-class RestartRequestDialog : DialogFragment() {
+class RestartRequestDialog(val expiredDetected: Boolean = false) : DialogFragment() {
 
-    interface ConfirmationListener {
+    interface RestartRequestDialogListener {
         fun confirmButtonClicked()
         fun cancelButtonClicked()
     }
 
-    private lateinit var listener: ConfirmationListener
+    private lateinit var listener: RestartRequestDialogListener
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
 
         try {
             // Instantiate the ConfirmationListener so we can send events to the host
-            listener = activity as ConfirmationListener
+            listener = activity as RestartRequestDialogListener
         } catch (e: ClassCastException) {
             // The activity doesn't implement the interface, throw exception
-            throw ClassCastException(activity.toString() + " must implement ConfirmationListener")
+            throw ClassCastException(activity.toString() + " must implement ${RestartRequestDialog::class.java.simpleName}")
         }
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         return AlertDialog.Builder(context!!)
-                .setMessage("Restart the tour?")
+                .setMessage("${if (expiredDetected) "Previous tour is expired. " else ""}Restart the tour?")
                 .setPositiveButton("YES") { _, _ ->
                     listener.confirmButtonClicked()
                 }
