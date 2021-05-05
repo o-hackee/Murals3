@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <data>
         <variable
@@ -7,17 +8,31 @@
             type="com.example.murals3.GeoDataModel" />
     </data>
 
-    <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    <RelativeLayout
         android:id="@+id/activity_maps_main"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <fragment xmlns:map="http://schemas.android.com/apk/res-auto"
-            xmlns:tools="http://schemas.android.com/tools"
+        <fragment
             android:id="@+id/map"
             android:name="com.google.android.gms.maps.SupportMapFragment"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            tools:context=".MapsActivity" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
+            tools:context=".MapsActivity"
+            tools:layout="@layout/activity_maps"
+            android:layout_width = "wrap_content"
+            android:layout_height = "wrap_content"
+            android:layout_alignParentTop ="true"/>
+
+        <RelativeLayout
+            android:layout_width="fill_parent"
+            android:layout_height = "wrap_content"
+            android:layout_alignParentBottom = "true">
+            <Button
+                android:id = "@+id/resetButton"
+                android:layout_width = "wrap_content"
+                android:layout_height = "wrap_content"
+                android:layout_marginStart="5dp"
+                android:text="@string/reset_button"
+                android:layout_alignParentStart = "true"/>
+        </RelativeLayout>
+    </RelativeLayout>
 </layout>

@@ -14,4 +14,5 @@
     <string name="location_required_error">Location services must be enabled for this app.</string>
     <string name="geofences_not_added">Problem in adding geofences.</string>
     <string name="geofences_added">Geofence added.</string>
+    <string name="reset_button">Reset</string>
 </resources>

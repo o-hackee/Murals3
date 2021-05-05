@@ -92,6 +92,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
             map.clear()
             addMarkers()
         }
+
+        binding.resetButton.setOnClickListener {
+            RestartRequestDialog().show(supportFragmentManager, "UserActionRestartTag")
+        }
     }
 
     override fun onStart() {
@@ -260,6 +264,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
     ) {
         if (requestCode != REQUEST_LOCATION_PERMISSION)
             return
+        Timber.d("grantResults: ${grantResults.joinToString()}")
         if (grantResults.any { it == PackageManager.PERMISSION_DENIED}) {
             Snackbar.make(
                     binding.activityMapsMain,
