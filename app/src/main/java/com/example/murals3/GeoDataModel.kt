@@ -160,12 +160,12 @@ class GeoDataModel(application: Application, savedStateHandle: SavedStateHandle)
                     .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
                     .addGeofence(geofence)
                     .build()
-            state.status = PoiStatus.Activated
             // A PendingIntent for the Broadcast Receiver that handles geofence transitions.
             geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent).run {
                 addOnSuccessListener {
                     Timber.i( "successfully added ${poiData.title}")
                     state.activationTimestamp = System.currentTimeMillis()
+                    state.status = PoiStatus.Activated
                     if (idx == pois.lastIndex) {
                         setLastUpdated(idx, PoiStatus.Activated)
                     }
