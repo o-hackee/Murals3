@@ -6,7 +6,7 @@ import android.content.Context
 import android.os.Bundle
 import androidx.fragment.app.DialogFragment
 
-class RestartRequestDialog(val expiredDetected: Boolean = false) : DialogFragment() {
+class RestartRequestDialog(val addMsg: String = "") : DialogFragment() {
 
     interface RestartRequestDialogListener {
         fun confirmButtonClicked()
@@ -29,7 +29,7 @@ class RestartRequestDialog(val expiredDetected: Boolean = false) : DialogFragmen
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         return AlertDialog.Builder(context!!)
-                .setMessage("${if (expiredDetected) "Previous tour is expired. " else ""}Restart the tour?")
+                .setMessage("$addMsg${if (addMsg.isNotEmpty()) ". " else ""}Restart the tour?")
                 .setPositiveButton("YES") { _, _ ->
                     listener.confirmButtonClicked()
                 }

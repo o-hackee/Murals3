@@ -7,7 +7,7 @@ data class MuralPoi(val latLng: LatLng, val link: String, val title: String)
 
 object MuralPois {
     val GEOFENCE_EXPIRATION_IN_MILLISECONDS: Long = // 60000
-        TimeUnit.HOURS.toMillis(2)
+        TimeUnit.HOURS.toMillis(3)
     const val GEOFENCE_RADIUS_IN_METERS = 20f
 
     val data: List<MuralPoi> by lazy {
@@ -22,7 +22,7 @@ object MuralPois {
             MuralPoi(LatLng(48.19738859313292, 16.361360486911753), "https://www.facebook.com/viennamurals/photos/a.1741974186127461/1828652050793007/?type=3", "1040, Naschmarkt / Rechte Wienzeile 29"),
             MuralPoi(LatLng(48.197810655829606, 16.360895599899305), "https://www.facebook.com/viennamurals/photos/a.1741974186127461/1827552607569618/?type=3", "1060, Linke Wienzeile 34"),
             MuralPoi(LatLng(48.199612839163244, 16.3583781742667), "https://www.facebook.com/viennamurals/photos/a.1741974186127461/1755446848113528/?type=3", "1060, Fillgradergasse 9"),
-            MuralPoi(LatLng(48.200080669146104, 16.357557528108167), "https://www.facebook.com/viennamurals/photos/a.1740920956232784/1747314995593380/?type=3", "1060, Capistranstiege / Capistrangasse 1"),
+            MuralPoi(LatLng(48.19974667867006, 16.357775070453524), "https://www.facebook.com/viennamurals/photos/a.1740920956232784/1747314995593380/?type=3", "1060, Capistranstiege / Capistrangasse 1"),
             MuralPoi(LatLng(48.199336745558554, 16.357619514465163), "https://www.facebook.com/viennamurals/photos/a.1741974186127461/1965920657066145/?type=3", "1060, Fillgradergasse 15"),
             MuralPoi(LatLng(48.19931818521658, 16.356642508664198), "https://www.facebook.com/viennamurals/photos/a.1741974186127461/1985673161757561/?type=", "1060, Windmühlgasse 16"),
             MuralPoi(LatLng(48.19914384732445, 16.356438367732064), "https://www.facebook.com/viennamurals/photos/a.1741974186127461/1809960935995452/?type=", "1060, Windmühlgasse 20"),
@@ -42,6 +42,6 @@ object MuralPois {
             MuralPoi(LatLng(48.19330737507315, 16.37585318210831), "https://www.facebook.com/viennamurals/photos/a.1741974186127461/1993078274350383/?type=3", "1040, Schmöllerlgasse"),
             MuralPoi(LatLng(48.19444632665846, 16.37702530744593), "https://www.facebook.com/viennamurals/photos/pcb.2923721774619357/2923714841286717/?type=3", "just was on PDF 2"),
             MuralPoi(LatLng(48.19815209018646, 16.381155101465435), "https://www.facebook.com/viennamurals/photos/pcb.2923721774619357/2923714841286717/?type=3", "just was on PDF 3")
-        )
+        )//.takeLast(8)
     }
 }

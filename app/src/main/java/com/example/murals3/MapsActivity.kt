@@ -85,7 +85,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
                 return@observe
             }
             if (status == GeoDataModel.PoiStatus.Visited) {
-                geofencingClient.removeGeofences(listOf(MuralPois.data[index].title))
+                geofencingClient.removeGeofences(listOf(index.toString()))
                 Timber.i("remove geofence ${MuralPois.data[index].title}")
             }
             // дорого, но что поделать
@@ -94,7 +94,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
         }
 
         binding.resetButton.setOnClickListener {
-            RestartRequestDialog().show(supportFragmentManager, "UserActionRestartTag")
+            viewModel.checkExpired()
+            val geofenceIsActive = viewModel.geofenceIsActive()
+            Timber.d("geofenceIsActive: $geofenceIsActive")
+            RestartRequestDialog(if (geofenceIsActive) "Previous tour is not complete" else "").show(supportFragmentManager, "UserActionRestartTag")
         }
     }
 
@@ -103,6 +106,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
         Timber.d("onStart()")
         if (this::map.isInitialized) {
             enableMyLocation()
+
+            val expiredDetected = viewModel.checkExpired()
+            val geofenceIsActive = viewModel.geofenceIsActive()
+            Timber.d("geofenceIsActive: $geofenceIsActive")
+            if (!geofenceIsActive && expiredDetected) {
+                RestartRequestDialog("Previous tour is expired").show(supportFragmentManager, "ExpiredDialogTag")
+            }
         }
     }
 
@@ -121,7 +131,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
             // and the check result is failure even if actually the location is eventually turned on
             // hence the delay
             Thread.sleep(500)
-            checkDeviceLocationSettingsAndStartGeofence(false)
+            checkDeviceLocationSettings(false)
         }
     }
 
@@ -152,7 +162,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
         val notificationManager = ContextCompat.getSystemService(applicationContext, NotificationManager::class.java)
         notificationManager?.cancelAll()
         viewModel.restart()
-        checkDeviceLocationSettingsAndStartGeofence()
+        viewModel.addAllGeofences(geofencingClient, geofencePendingIntent)
     }
 
     override fun cancelButtonClicked() {
@@ -202,7 +212,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
                 == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
-            checkDeviceLocationSettingsAndStartGeofence()
+            checkDeviceLocationSettings()
         } else {
             ActivityCompat.requestPermissions(this,
                     arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_BACKGROUND_LOCATION),
@@ -210,7 +220,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
         }
     }
 
-    private fun checkDeviceLocationSettingsAndStartGeofence(resolve: Boolean = true) {
+    private fun checkDeviceLocationSettings(resolve: Boolean = true) {
         Timber.d("checking location turned on/off")
         val locationRequest = LocationRequest.create()
         locationRequest.priority = LocationRequest.PRIORITY_LOW_POWER
@@ -222,17 +232,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
             Timber.d("OnCompleteListener() locationSettingsResponse.isSuccessful: ${locationSettingsResponse.isSuccessful}")
             if (locationSettingsResponse.isSuccessful) {
                 map.isMyLocationEnabled = true
-                val expiredDetected = viewModel.checkExpired()
-
-                val geofenceIsActive = viewModel.geofenceIsActive()
-                Timber.d("geofenceIsActive: $geofenceIsActive")
-                if (!geofenceIsActive) {
-                    if (expiredDetected) {
-                        RestartRequestDialog(true).show(supportFragmentManager, "ExpiredDialogTag")
-                    } else {
-                        viewModel.addAllGeofences(geofencingClient, geofencePendingIntent)
-                    }
-                }
             }
         }
         locationSettingsResponseTask.addOnFailureListener { exception ->
@@ -250,7 +249,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
                         R.string.location_required_error, Snackbar.LENGTH_INDEFINITE)
                         .setAction(android.R.string.ok) {
                             Timber.d("calling checkDeviceLocationSettingsAndStartGeofence()")
-                            checkDeviceLocationSettingsAndStartGeofence()
+                            checkDeviceLocationSettings()
                         }
                         .show()
             }
