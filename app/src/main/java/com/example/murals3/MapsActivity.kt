@@ -31,10 +31,6 @@ import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.material.snackbar.Snackbar
 import timber.log.Timber
 
-// TODO icon
-// какой-то geofence-статус?
-// TODO потестить перезапуски, background и.т.д.
-
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDialog.RestartRequestDialogListener {
 
     private lateinit var binding: ActivityMapsBinding
@@ -57,8 +53,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, RestartRequestDial
         internal const val ACTION_GEOFENCE_NOTIFY_EVENT = "MapsActivity.action.ACTION_GEOFENCE_NOTIFY"
         internal const val ACTION_COMPLETE_EVENT = "MapsActivity.action.ACTION_COMPLETE_EVENT"
     }
-
-    // TODO добавить проверку expired
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

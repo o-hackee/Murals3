@@ -12,7 +12,6 @@ import androidx.lifecycle.SavedStateHandle
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
-import com.google.android.gms.maps.model.LatLng
 import kotlinx.parcelize.Parcelize
 import timber.log.Timber
 
@@ -112,43 +111,12 @@ class GeoDataModel(application: Application, savedStateHandle: SavedStateHandle)
         }
     }
 
-    // TODO delete this, debug only
-    private fun add100(geofencingClient: GeofencingClient, geofencePendingIntent: PendingIntent) {
-        return
-        val point = LatLng(48.1977, 16.3671)
-        (1..100).forEach {
-            val geofence = Geofence.Builder()
-                    .setRequestId(it.toString())
-                    .setCircularRegion(point.latitude, point.longitude, MuralPois.GEOFENCE_RADIUS_IN_METERS)
-                    .setExpirationDuration(MuralPois.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
-                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
-                    .build()
-            val geofencingRequest = GeofencingRequest.Builder()
-                    .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
-                    .addGeofence(geofence)
-                    .build()
-            // A PendingIntent for the Broadcast Receiver that handles geofence transitions.
-            geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent).addOnCompleteListener {
-                Timber.i("pseudo $it added")
-            }
-        }
-    }
-    private fun remove100(geofencingClient: GeofencingClient, geofencePendingIntent: PendingIntent) {
-        return
-        geofencingClient.removeGeofences(geofencePendingIntent)
-    }
-
     fun addAllGeofences(geofencingClient: GeofencingClient, geofencePendingIntent: PendingIntent) {
 
         val notificationManager = ContextCompat.getSystemService(getApplication(), NotificationManager::class.java)
         notificationManager?.cancelAll()
 
-        add100(geofencingClient, geofencePendingIntent)
-
         pois.forEachIndexed { idx, state ->
-            if (idx == 1) {
-                remove100(geofencingClient, geofencePendingIntent)
-            }
             val poiData = MuralPois.data[idx]
             val geofence = Geofence.Builder()
                     .setRequestId(idx.toString())
